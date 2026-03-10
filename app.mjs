@@ -1,4 +1,4 @@
-```javascript
+// javascript
 import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
