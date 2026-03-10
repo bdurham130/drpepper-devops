@@ -1,6 +1,6 @@
 # 🥤 Dr Pepper DevOps — CIS486
 
-A full stack MVC CRUD web application demonstrating end-to-end data round trip
+> A full stack MVC CRUD web application demonstrating end-to-end data round trip
 with persistent MongoDB-backed storage.
 
 ## Live Deployments
