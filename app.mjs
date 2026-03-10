@@ -2,163 +2,118 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFile } from 'fs/promises';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 
 const app = express();
 
+// ESM __dirname fix
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// MongoDB
 const uri = process.env.MONGO_URI;
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true
+  }
+});
 
-app.use(express.static(join(__dirname,'public')));
 app.use(express.json());
+app.use(express.static(join(__dirname, 'public')));
 
-const client = new MongoClient(uri,{
-serverApi:{
-version:ServerApiVersion.v1,
-strict:true,
-deprecationErrors:true
-}
+// Serve main game page
+app.get('/', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/',(req,res)=>{
-res.sendFile(join(__dirname,'public','attend.html'))
+// Optional: Serve injected content
+app.get('/inject', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/inject',(req,res)=>{
-readFile(join(__dirname,'public','index.html'),'utf8')
-.then(html=>{
-const injectedHtml = html.replace('{{myVar}}','injected from server')
-res.send(injectedHtml)
-})
-.catch(err=>{
-res.status(500).send('Error loading page')
-})
+// API to create/save a player's score
+app.post('/api/scores', async (req, res) => {
+  try {
+    const { playerName, score } = req.body;
+    if (!playerName || score == null) {
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+
+    const db = client.db('memory_game');
+    const collection = db.collection('scores');
+
+    const result = await collection.insertOne({
+      playerName,
+      score,
+      timestamp: new Date()
+    });
+
+    res.json({ message: 'Score recorded', id: result.insertedId });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to record score' });
+  }
 });
 
-app.get('/api/class',(req,res)=>{
+// API to read all scores
+app.get('/api/scores', async (req, res) => {
+  try {
+    const db = client.db('memory_game');
+    const collection = db.collection('scores');
 
-const classInfo={
-courseNumber:'CIS 486',
-courseName:'Projects in IS',
-nickname:'Full Stack DevOps',
-semester:'Spring 2026',
-calendar:'Class calendar coming soon!'
-}
+    const records = await collection.find({}).sort({ score: -1 }).toArray();
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read scores' });
+  }
+});
 
-res.json(classInfo)
+// Update a score
+app.put('/api/scores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { playerName, score } = req.body;
 
-})
+    const db = client.db('memory_game');
+    const collection = db.collection('scores');
 
-app.post('/api/attendance',async(req,res)=>{
+    const result = await collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { playerName, score } }
+    );
 
-try{
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Score not found' });
+    }
 
-const {studentName,date,keyword}=req.body
+    res.json({ message: 'Score updated' });
+  } catch (err) {
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
 
-if(!studentName || !date || !keyword){
-return res.status(400).json({error:'Missing fields'})
-}
+// Delete a score
+app.delete('/api/scores/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-const db = client.db('cis486')
-const collection = db.collection('attendance')
+    const db = client.db('memory_game');
+    const collection = db.collection('scores');
 
-const result = await collection.insertOne({
-studentName,
-date,
-keyword,
-timestamp:new Date()
-})
+    const result = await collection.deleteOne({ _id: new ObjectId(id) });
 
-res.json({
-message:'Attendance recorded',
-id:result.insertedId
-})
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Score not found' });
+    }
 
-}catch(err){
+    res.json({ message: 'Score deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
 
-res.status(500).json({error:'Failed to record'})
-
-}
-
-})
-
-app.get('/api/attendance',async(req,res)=>{
-
-try{
-
-const db = client.db('cis486')
-const collection = db.collection('attendance')
-
-const records = await collection.find({}).toArray()
-
-res.json(records)
-
-}catch(err){
-
-res.status(500).json({error:'Failed to read'})
-
-}
-
-})
-
-app.put('/api/attendance/:id',async(req,res)=>{
-
-try{
-
-const {id}=req.params
-const {studentName,date,keyword}=req.body
-
-const db = client.db('cis486')
-const collection = db.collection('attendance')
-
-const result = await collection.updateOne(
-{_id:new ObjectId(id)},
-{$set:{studentName,date,keyword}}
-)
-
-if(result.matchedCount===0){
-return res.status(404).json({error:'Not found'})
-}
-
-res.json({message:'Updated'})
-
-}catch(err){
-
-res.status(500).json({error:'Update failed'})
-
-}
-
-})
-
-app.delete('/api/attendance/:id',async(req,res)=>{
-
-try{
-
-const {id}=req.params
-
-const db = client.db('cis486')
-const collection = db.collection('attendance')
-
-const result = await collection.deleteOne({_id:new ObjectId(id)})
-
-if(result.deletedCount===0){
-return res.status(404).json({error:'Not found'})
-}
-
-res.json({message:'Deleted'})
-
-}catch(err){
-
-res.status(500).json({error:'Delete failed'})
-
-}
-
-})
-
-app.listen(3000,()=>{
-console.log('Server running http://localhost:3000')
-})is running on http://localhost:3000')
-})
+// Start server
+app.listen(3000, () => {
+  console.log('Memory game server running on http://localhost:3000');
+});
