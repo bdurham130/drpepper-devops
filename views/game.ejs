@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+<div class="text-center">
+  <h1 class="mb-3">🎮 Emoji Matching Game</h1>
+
+  <div class="mb-3">
+    <% if (user) { %>
+      <p>Playing as: <strong><%= user.username %></strong></p>
+      <input type="hidden" id="playerName" value="<%= user.username %>">
+    <% } else { %>
+      <input
+        id="playerName"
+        class="form-control mx-auto"
+        placeholder="Enter your name to save scores"
+        style="max-width: 280px;"
+      >
+    <% } %>
+  </div>
+
+  <div class="d-flex justify-content-center align-items-center gap-4 mb-3">
+    <div>
+      Moves: <span id="moves" class="fw-bold">0</span>
+    </div>
+    <div>
+      <label for="difficulty" class="form-label mb-0 me-1">Grid:</label>
+      <select id="difficulty" class="form-select form-select-sm d-inline-block" style="width: auto;">
+        <option value="4x4">4×4 (Easy)</option>
+        <option value="6x6">6×6 (Hard)</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="gameBoard"></div>
+
+  <button class="btn btn-primary mt-3" id="restartBtn">Restart Game</button>
+</div>
+
+<script src="/js/game.js"></script>
+
+<%- include('partials/footer') %>

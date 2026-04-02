@@ -1,0 +1,120 @@
+<%- include('partials/header') %>
+
+<div class="text-center">
+  <h1 class="mb-2">🏆 Leaderboard</h1>
+  <p class="text-muted">Top scores — fewest moves wins!</p>
+</div>
+
+<!-- Filter controls -->
+<div class="d-flex justify-content-center gap-2 mb-4">
+  <select id="filterDifficulty" class="form-select form-select-sm" style="width: auto;">
+    <option value="all">All Difficulties</option>
+    <option value="4x4">4×4 (Easy)</option>
+    <option value="6x6">6×6 (Hard)</option>
+  </select>
+  <input
+    type="text"
+    id="filterName"
+    class="form-control form-control-sm"
+    placeholder="Search by name..."
+    style="width: 200px;"
+  >
+</div>
+
+<!-- Leaderboard table -->
+<div class="table-responsive">
+  <table class="table table-striped table-hover">
+    <thead class="table-primary">
+      <tr>
+        <th>#</th>
+        <th>Player</th>
+        <th>Moves</th>
+        <th>Grid</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="leaderboardBody">
+      <tr>
+        <td colspan="6" class="text-center text-muted">Loading scores...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  let allScores = [];
+
+  // Load scores from API
+  async function loadLeaderboard() {
+    try {
+      const res = await fetch('/api/scores');
+      allScores = await res.json();
+      renderLeaderboard(allScores);
+    } catch (err) {
+      console.error('Failed to load leaderboard:', err);
+    }
+  }
+
+  // Render filtered scores into the table
+  function renderLeaderboard(scores) {
+    const tbody = document.getElementById('leaderboardBody');
+
+    if (scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No scores yet.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = scores.map((s, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${s.playerName}</strong></td>
+        <td>${s.moves}</td>
+        <td><span class="badge bg-secondary">${s.difficulty || '4x4'}</span></td>
+        <td>${new Date(s.completedAt).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteScore('${s._id}')">
+            Delete
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Delete a score
+  async function deleteScore(id) {
+    if (!confirm('Delete this score?')) return;
+    try {
+      await fetch('/api/scores/' + id, { method: 'DELETE' });
+      loadLeaderboard();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  }
+
+  // Filter by difficulty
+  document.getElementById('filterDifficulty').addEventListener('change', applyFilters);
+  document.getElementById('filterName').addEventListener('input', applyFilters);
+
+  function applyFilters() {
+    const diff = document.getElementById('filterDifficulty').value;
+    const name = document.getElementById('filterName').value.toLowerCase();
+
+    let filtered = allScores;
+
+    if (diff !== 'all') {
+      filtered = filtered.filter(s => s.difficulty === diff);
+    }
+
+    if (name) {
+      filtered = filtered.filter(s => s.playerName.toLowerCase().includes(name));
+    }
+
+    renderLeaderboard(filtered);
+  }
+
+  // Load on page ready
+  loadLeaderboard();
+</script>
+
+<%- include('partials/footer') %>

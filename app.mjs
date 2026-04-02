@@ -1,129 +1,66 @@
-// javascript
 import 'dotenv/config';
 import express from 'express';
+import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
+
+import connectDB from './config/db.mjs';
+import pageRoutes from './routes/index.mjs';
+import apiRoutes from './routes/api.mjs';
+
+// ---------- Setup ----------
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Resolve paths
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Validate Mongo URI
-const uri = process.env.MONGO_URI;
-
-if (!uri) {
-  console.error("ERROR: MONGO_URI environment variable is missing.");
-  process.exit(1);
-}
-
-// MongoDB Client
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true
-  }
-});
-
 // Connect to MongoDB
-async function connectDB() {
-  try {
-    await client.connect();
-    console.log("Connected to MongoDB Atlas");
-  } catch (err) {
-    console.error("MongoDB connection failed:", err);
-    process.exit(1);
-  }
-}
-
 await connectDB();
 
-// Middleware
+// ---------- View Engine ----------
+
+app.set('view engine', 'ejs');
+app.set('views', join(__dirname, 'views'));
+
+// ---------- Middleware ----------
+
 app.use(express.static(join(__dirname, 'public')));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Serve frontend
-app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'public', 'index.html'));
-});
-
-// Save attendance
-app.post('/api/attendance', async (req, res) => {
-  try {
-    const { studentName, keyword } = req.body;
-
-    if (!studentName || !keyword) {
-      return res.status(400).json({ error: 'Missing fields' });
-    }
-
-    const db = client.db('cis486');
-    const collection = db.collection('attendance');
-
-    const result = await collection.insertOne({
-      studentName,
-      keyword,
-      timestamp: new Date()
-    });
-
-    res.json({
-      message: 'Attendance recorded',
-      id: result.insertedId
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to record attendance' });
+// Session (stores sessions in MongoDB)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    collectionName: 'sessions'
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 // 24 hours
   }
+}));
+
+// ---------- Routes ----------
+
+app.use('/', pageRoutes);
+app.use('/api', apiRoutes);
+
+// ---------- 404 Handler ----------
+
+app.use((req, res) => {
+  res.status(404).render('home', {
+    title: '404 — Not Found',
+    user: req.session?.user || null
+  });
 });
 
-// Get attendance records
-app.get('/api/attendance', async (req, res) => {
-  try {
-    const db = client.db('cis486');
-    const collection = db.collection('attendance');
+// ---------- Start Server ----------
 
-    const records = await collection
-      .find({})
-      .sort({ timestamp: -1 })
-      .toArray();
-
-    res.json(records);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to load records' });
-  }
-});
-
-// Delete record
-app.delete('/api/attendance/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const db = client.db('cis486');
-    const collection = db.collection('attendance');
-
-    const result = await collection.deleteOne({
-      _id: new ObjectId(id)
-    });
-
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Record not found' });
-    }
-
-    res.json({ message: 'Record deleted' });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Delete failed' });
-  }
-});
-
-// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

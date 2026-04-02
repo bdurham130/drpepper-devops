@@ -1,0 +1,92 @@
+/* ===========================
+   Emoji Match — Main Styles
+   =========================== */
+
+body {
+  background: #f5f5f5;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Game Board ---------- */
+
+#gameBoard {
+  display: grid;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+#gameBoard.grid-4x4 {
+  grid-template-columns: repeat(4, 100px);
+}
+
+#gameBoard.grid-6x6 {
+  grid-template-columns: repeat(6, 80px);
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  width: 100px;
+  height: 100px;
+  background: #0d6efd;
+  color: white;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  user-select: none;
+  border: none;
+}
+
+#gameBoard.grid-6x6 .card {
+  width: 80px;
+  height: 80px;
+  font-size: 22px;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card.flipped {
+  background: white;
+  color: black;
+  cursor: default;
+  transform: scale(1);
+}
+
+.card.matched {
+  background: #d4edda;
+  color: black;
+  cursor: default;
+  opacity: 0.8;
+}
+
+/* ---------- Leaderboard (inline on game page) ---------- */
+
+.leaderboard-item {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 6px auto;
+  max-width: 400px;
+  font-size: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ---------- Utility ---------- */
+
+.shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
