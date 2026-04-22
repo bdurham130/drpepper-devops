@@ -17,7 +17,6 @@ let moves = 0;
 let totalCards = 0;
 let lockBoard = false;
 
-// Shuffle array in place (Fisher-Yates)
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -25,12 +24,10 @@ function shuffle(arr) {
   }
 }
 
-// Get current difficulty
 function getDifficulty() {
   return document.getElementById('difficulty').value;
 }
 
-// Start / restart the game
 function startGame() {
   const difficulty = getDifficulty();
   const emojis = [...EMOJI_SETS[difficulty]];
@@ -52,14 +49,13 @@ function startGame() {
 
   emojis.forEach((emoji) => {
     const card = document.createElement('div');
-    card.classList.add('card');
+    card.classList.add('game-card');   // <-- renamed from 'card'
     card.dataset.emoji = emoji;
     card.addEventListener('click', flipCard);
     board.appendChild(card);
   });
 }
 
-// Flip a card
 function flipCard() {
   if (lockBoard) return;
   if (this.classList.contains('flipped') || this.classList.contains('matched')) return;
@@ -77,7 +73,6 @@ function flipCard() {
   }
 }
 
-// Check if two flipped cards match
 function checkMatch() {
   const [a, b] = flipped;
 
@@ -103,7 +98,6 @@ function checkMatch() {
   lockBoard = false;
 }
 
-// Save score to database via API
 async function saveScore() {
   const nameInput = document.getElementById('playerName');
   const playerName = nameInput.value.trim();
@@ -119,15 +113,10 @@ async function saveScore() {
     const res = await fetch('/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        playerName,
-        moves,
-        difficulty
-      })
+      body: JSON.stringify({ playerName, moves, difficulty })
     });
 
     const data = await res.json();
-
     if (res.ok) {
       console.log('Score saved:', data);
     } else {
@@ -138,11 +127,7 @@ async function saveScore() {
   }
 }
 
-// ---------- Event Listeners ----------
-
 document.getElementById('restartBtn').addEventListener('click', startGame);
-
 document.getElementById('difficulty').addEventListener('change', startGame);
 
-// Start game on page load
 startGame();

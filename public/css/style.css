@@ -27,9 +27,9 @@ body {
   grid-template-columns: repeat(6, 80px);
 }
 
-/* ---------- Cards ---------- */
+/* ---------- Game Cards (scoped to #gameBoard only) ---------- */
 
-.card {
+#gameBoard .game-card {
   width: 100px;
   height: 100px;
   background: #0d6efd;
@@ -45,48 +45,27 @@ body {
   border: none;
 }
 
-#gameBoard.grid-6x6 .card {
+#gameBoard.grid-6x6 .game-card {
   width: 80px;
   height: 80px;
   font-size: 22px;
 }
 
-.card:hover {
+#gameBoard .game-card:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.card.flipped {
+#gameBoard .game-card.flipped {
   background: white;
   color: black;
   cursor: default;
   transform: scale(1);
 }
 
-.card.matched {
+#gameBoard .game-card.matched {
   background: #d4edda;
   color: black;
   cursor: default;
   opacity: 0.8;
-}
-
-/* ---------- Leaderboard (inline on game page) ---------- */
-
-.leaderboard-item {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 10px 14px;
-  margin: 6px auto;
-  max-width: 400px;
-  font-size: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* ---------- Utility ---------- */
-
-.shadow-sm {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
