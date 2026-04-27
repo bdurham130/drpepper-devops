@@ -4,24 +4,29 @@ const DEFAULT_ADMIN_USERNAME = 'admin';
 const DEFAULT_ADMIN_PASSWORD = 'admin';
 
 export const ensureAdminAccount = async () => {
-  const existingAdmin = await User.findOne({ role: 'admin' }).lean();
-
-  if (existingAdmin) {
-    return;
-  }
-
   const username = process.env.ADMIN_USERNAME || DEFAULT_ADMIN_USERNAME;
   const password = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
   const existingUser = await User.findOne({ username });
 
   if (existingUser) {
-    existingUser.role = 'admin';
+    let shouldSave = false;
 
-    if (process.env.ADMIN_PASSWORD) {
-      existingUser.password = password;
+    if (existingUser.role !== 'admin') {
+      existingUser.role = 'admin';
+      shouldSave = true;
     }
 
-    await existingUser.save();
+    const passwordMatches = await existingUser.comparePassword(password);
+
+    if (!passwordMatches) {
+      existingUser.password = password;
+      shouldSave = true;
+    }
+
+    if (shouldSave) {
+      await existingUser.save();
+    }
+
     return;
   }
 
