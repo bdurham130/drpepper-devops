@@ -1,16 +1,18 @@
 <%- include('partials/header') %>
 
 <div class="text-center">
-  <h1 class="mb-2">🏆 Leaderboard</h1>
-  <p class="text-muted">Top scores — fewest moves wins!</p>
+  <h1 class="mb-2">Leaderboard</h1>
+  <p class="text-muted">Top scores. Fewest moves wins.</p>
+  <% if (user && user.role === 'admin') { %>
+    <p class="small text-muted mb-0">Admin tools are enabled for this session.</p>
+  <% } %>
 </div>
 
-<!-- Filter controls -->
 <div class="d-flex justify-content-center gap-2 mb-4">
   <select id="filterDifficulty" class="form-select form-select-sm" style="width: auto;">
     <option value="all">All Difficulties</option>
-    <option value="4x4">4×4 (Easy)</option>
-    <option value="6x6">6×6 (Hard)</option>
+    <option value="4x4">4x4 (Easy)</option>
+    <option value="6x6">6x6 (Hard)</option>
   </select>
   <input
     type="text"
@@ -21,7 +23,6 @@
   >
 </div>
 
-<!-- Leaderboard table -->
 <div class="table-responsive">
   <table class="table table-striped table-hover">
     <thead class="table-primary">
@@ -31,12 +32,14 @@
         <th>Moves</th>
         <th>Grid</th>
         <th>Date</th>
-        <th>Actions</th>
+        <% if (user && user.role === 'admin') { %>
+          <th>Actions</th>
+        <% } %>
       </tr>
     </thead>
     <tbody id="leaderboardBody">
       <tr>
-        <td colspan="6" class="text-center text-muted">Loading scores...</td>
+        <td colspan="<%= user && user.role === 'admin' ? 6 : 5 %>" class="text-center text-muted">Loading scores...</td>
       </tr>
     </tbody>
   </table>
@@ -44,8 +47,8 @@
 
 <script>
   let allScores = [];
+  const canManageScores = <%- JSON.stringify(Boolean(user && user.role === 'admin')) %>;
 
-  // Load scores from API
   async function loadLeaderboard() {
     try {
       const res = await fetch('/api/scores');
@@ -56,64 +59,108 @@
     }
   }
 
-  // Render filtered scores into the table
   function renderLeaderboard(scores) {
     const tbody = document.getElementById('leaderboardBody');
+    const colspan = canManageScores ? 6 : 5;
 
     if (scores.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No scores yet.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted">No scores yet.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = scores.map((s, i) => `
+    tbody.innerHTML = scores.map((score, index) => `
       <tr>
-        <td>${i + 1}</td>
-        <td><strong>${s.playerName}</strong></td>
-        <td>${s.moves}</td>
-        <td><span class="badge bg-secondary">${s.difficulty || '4x4'}</span></td>
-        <td>${new Date(s.completedAt).toLocaleDateString()}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteScore('${s._id}')">
-            Delete
-          </button>
-        </td>
+        <td>${index + 1}</td>
+        <td><strong>${score.playerName}</strong></td>
+        <td>${score.moves}</td>
+        <td><span class="badge bg-secondary">${score.difficulty || '4x4'}</span></td>
+        <td>${new Date(score.completedAt).toLocaleDateString()}</td>
+        ${canManageScores ? `
+          <td class="text-nowrap">
+            <button class="btn btn-sm btn-outline-primary me-2" onclick="editScore('${score._id}')">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteScore('${score._id}')">Delete</button>
+          </td>
+        ` : ''}
       </tr>
     `).join('');
   }
 
-  // Delete a score
-  async function deleteScore(id) {
-    if (!confirm('Delete this score?')) return;
+  async function editScore(id) {
+    const score = allScores.find((entry) => entry._id === id);
+
+    if (!score) {
+      return;
+    }
+
+    const playerName = prompt('Player name:', score.playerName);
+    if (playerName === null) return;
+
+    const moves = prompt('Moves:', score.moves);
+    if (moves === null) return;
+
+    const difficulty = prompt('Difficulty (4x4 or 6x6):', score.difficulty || '4x4');
+    if (difficulty === null) return;
+
     try {
-      await fetch('/api/scores/' + id, { method: 'DELETE' });
+      const res = await fetch('/api/scores/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerName, moves, difficulty })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Update failed.');
+        return;
+      }
+
       loadLeaderboard();
     } catch (err) {
-      console.error('Delete failed:', err);
+      console.error('Update failed:', err);
+      alert('Update failed.');
     }
   }
 
-  // Filter by difficulty
+  async function deleteScore(id) {
+    if (!confirm('Delete this score?')) return;
+
+    try {
+      const res = await fetch('/api/scores/' + id, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Delete failed.');
+        return;
+      }
+
+      loadLeaderboard();
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Delete failed.');
+    }
+  }
+
   document.getElementById('filterDifficulty').addEventListener('change', applyFilters);
   document.getElementById('filterName').addEventListener('input', applyFilters);
 
   function applyFilters() {
-    const diff = document.getElementById('filterDifficulty').value;
+    const difficulty = document.getElementById('filterDifficulty').value;
     const name = document.getElementById('filterName').value.toLowerCase();
 
     let filtered = allScores;
 
-    if (diff !== 'all') {
-      filtered = filtered.filter(s => s.difficulty === diff);
+    if (difficulty !== 'all') {
+      filtered = filtered.filter((score) => score.difficulty === difficulty);
     }
 
     if (name) {
-      filtered = filtered.filter(s => s.playerName.toLowerCase().includes(name));
+      filtered = filtered.filter((score) => score.playerName.toLowerCase().includes(name));
     }
 
     renderLeaderboard(filtered);
   }
 
-  // Load on page ready
   loadLeaderboard();
 </script>
 
