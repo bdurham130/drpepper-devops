@@ -1,7 +1,7 @@
 import User from '../models/User.mjs';
 
 const DEFAULT_ADMIN_USERNAME = 'admin';
-const DEFAULT_ADMIN_PASSWORD = 'ChangeMe123!';
+const DEFAULT_ADMIN_PASSWORD = 'admin';
 
 export const ensureAdminAccount = async () => {
   const existingAdmin = await User.findOne({ role: 'admin' }).lean();
